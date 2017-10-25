@@ -1,0 +1,16 @@
+1 - Seleccion de caminos aleatoria de una carpeta
+2 - Seleccion de paletas de colores de una carpeta
+3 - Seleccion de Formas de una carpeta
+
+Frecuencia 	-> que color de la paleta
+
+Progresion aleatoria de angulo para formas no circulares?
+
+Bajos y Altos -> Color
+
+Ver con que varia la forma, pero seria conveniente que no con volumen para no incitar al grito
+
+
+Hacer 2 vueltas a cada recorrido, solo empezar la primer vuelta cuando se detecta un sonido. Al final de la segunda vuelta, esperar 5 segundos con dibujo en pantalla, y luego borrar recorriendo rapidamente el camino. Una vez se termina de borrar vuelve a la posicion de stand by al principio de la primer vuelta del proximo recorrido.
+
+Cuando se hace la segunda vuelta se comporta como prototipo actual, borrando la primer vuelta a medida que avanza.
