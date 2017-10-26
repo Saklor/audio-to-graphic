@@ -6,7 +6,7 @@ import time
 
 from os import listdir
 from os.path import isfile, join
-from math import ceil
+from math import ceil, sin, cos
 
 from audio_transformation import apply_fft
 
@@ -45,8 +45,11 @@ class PathDrawing(tk.Tk):
         self.paths = []
         self.drawings = {}
 
+        self.color_order = [0,1,2]
+
         self.lap = 0
 
+        self.drawing_step = 1
 
         self.stream = p.open(format=FORMAT,
                 channels=CHANNELS,
@@ -55,7 +58,7 @@ class PathDrawing(tk.Tk):
                 frames_per_buffer=CHUNK)
 
         self.unpack_paths(arg)
-        self.path = random.choice(self.paths)
+        self.set_random_path()
         print ([len(a) for a in self.paths])
         self.after(0, self.draw_on_path)
 
@@ -63,6 +66,39 @@ class PathDrawing(tk.Tk):
     def create_circle_centered(self, pos, r, **kwargs):
         x, y = pos
         return self.canvas.create_oval(x-r, y-r, x+r, y+r, **kwargs)
+
+
+    def create_square_centered_and_rotated(self, pos, size, rotation, **kwargs):
+        coords = []
+        corner_variation = [
+            (-size, -size),
+            (-size, size),
+            (size, size),
+            (size, -size)
+        ]
+
+        for corner in [tuple(map(lambda x, y: x + y, elem, pos)) for elem in corner_variation]:
+            tempX = corner[0] - pos[0]
+            tempY = corner[1] - pos[1]
+
+            rotatedX = tempX*cos(rotation) - tempY*sin(rotation)
+            rotatedY = tempX*sin(rotation) + tempY*cos(rotation)
+
+            x = rotatedX + pos[0]
+            y = rotatedY + pos[1]
+            coords.append((x,y))
+
+        return self.canvas.create_polygon(coords, **kwargs)
+
+
+    def set_random_path(self):
+        self.path = random.choice(self.paths)
+        random.shuffle(self.color_order)
+        print(self.color_order)
+        if (len(self.path) > 5000):
+            self.drawing_step = 2
+        else:
+            self.drawing_step = 1    
 
 
     def unpack_paths(self, dir):
@@ -75,7 +111,8 @@ class PathDrawing(tk.Tk):
             self.paths.append(current_file_path)
 
 
-    def rgb_to_hex(self, r, g, b):
+    def rgb_to_hex(self, rgb):
+        r, g, b = rgb
         return '#%02x%02x%02x' % (r, g, b)
 
 
@@ -100,25 +137,36 @@ class PathDrawing(tk.Tk):
         fft_data = apply_fft(mic_data)
 
 
-        index_to_delete = ((self.index + DELETE_SPACING) % len(self.path))
-        if index_to_delete > self.index or self.lap == 0:
-            self.delete_index_drawing(index_to_delete)
+
+        for index_to_check in range(self.index, self.index + self.drawing_step):
+            index_to_delete = ((index_to_check + DELETE_SPACING) % len(self.path))
+            if index_to_delete > self.index or self.lap == 0:
+                self.delete_index_drawing(index_to_delete)
 
 
 
         self.line_width = int((audioop.max(mic_data, 2)/32768) * 15)
-        self.color = self.rgb_to_hex(
+        rgb = [
             min(255, int(self.max_bass_level(fft_data)/MAX_FFT_READING*255)),
             min(255, int(self.max_harmonics_level(fft_data)/MAX_FFT_READING*255)),
             min(255, int(self.max_high_level(fft_data)/MAX_FFT_READING*255))
-        )
+        ]
+        rgb = [rgb[i] for i in self.color_order]
+        self.color = self.rgb_to_hex(rgb)
 
         if self.line_width > 2:
-            self.drawings[self.index] = self.create_circle_centered(self.path[self.index], self.line_width, fill=self.color, outline='')
+            self.drawings[self.index] = self.create_square_centered_and_rotated(
+                self.path[self.index],
+                self.line_width,
+                random.randint(0,360),
+                fill=self.color,
+                outline=''
+            )
+            # self.drawings[self.index] = self.create_circle_centered(self.path[self.index], self.line_width, fill=self.color, outline='')
 
 
 
-        self.index += 1
+        self.index += self.drawing_step
         if self.index >= len(self.path):
             self.lap += 1
             self.index = self.index % len(self.path)
@@ -140,7 +188,7 @@ class PathDrawing(tk.Tk):
         else:
             self.index = 0
             self.lap = 0
-            self.path = random.choice(self.paths)
+            self.set_random_path()
             self.stream.start_stream()
             self.after(DRAWING_STEP_DELAY, self.draw_on_path)
 
