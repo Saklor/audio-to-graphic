@@ -27,7 +27,8 @@ DELETE_SPACING = 50
 DRAWING_STEP_DELAY = 10
 STATIC_DRAWING_TIME = 5000
 
-MAX_FFT_READING = 8388352/2
+MAX_MIC_READING = 32768/2
+MAX_FFT_READING = 8388352/4
 FFT_BIN_FREQ_RANGE = int(RATE/ceil(CHUNK/2)) #Freq range of each bin
 
 
@@ -43,9 +44,11 @@ class PathDrawing(tk.Tk):
         
         self.path = []
         self.paths = []
+        self.shapes = ['circle', 'square']
         self.drawings = {}
 
         self.color_order = [0,1,2]
+        self.shape = self.shapes[0]
 
         self.lap = 0
 
@@ -58,7 +61,7 @@ class PathDrawing(tk.Tk):
                 frames_per_buffer=CHUNK)
 
         self.unpack_paths(arg)
-        self.set_random_path()
+        self.set_random_variables()
         print ([len(a) for a in self.paths])
         self.after(0, self.draw_on_path)
 
@@ -91,14 +94,19 @@ class PathDrawing(tk.Tk):
         return self.canvas.create_polygon(coords, **kwargs)
 
 
-    def set_random_path(self):
+    def set_random_variables(self):
+        # Random path
         self.path = random.choice(self.paths)
-        random.shuffle(self.color_order)
-        print(self.color_order)
         if (len(self.path) > 5000):
             self.drawing_step = 2
         else:
-            self.drawing_step = 1    
+            self.drawing_step = 1
+
+        # Random color order
+        random.shuffle(self.color_order)
+
+        # Random shape
+        self.shape = random.choice(self.shapes)
 
 
     def unpack_paths(self, dir):
@@ -133,7 +141,7 @@ class PathDrawing(tk.Tk):
 
 
     def draw_on_path(self):
-        mic_data = self.stream.read(CHUNK)
+        mic_data = self.stream.read(CHUNK, exception_on_overflow = False)
         fft_data = apply_fft(mic_data)
 
 
@@ -145,7 +153,7 @@ class PathDrawing(tk.Tk):
 
 
 
-        self.line_width = int((audioop.max(mic_data, 2)/32768) * 15)
+        self.line_width = min(int((audioop.max(mic_data, 2)/MAX_MIC_READING) * 15), 15)
         rgb = [
             min(255, int(self.max_bass_level(fft_data)/MAX_FFT_READING*255)),
             min(255, int(self.max_harmonics_level(fft_data)/MAX_FFT_READING*255)),
@@ -155,14 +163,21 @@ class PathDrawing(tk.Tk):
         self.color = self.rgb_to_hex(rgb)
 
         if self.line_width > 2:
-            self.drawings[self.index] = self.create_square_centered_and_rotated(
-                self.path[self.index],
-                self.line_width,
-                random.randint(0,360),
-                fill=self.color,
-                outline=''
-            )
-            # self.drawings[self.index] = self.create_circle_centered(self.path[self.index], self.line_width, fill=self.color, outline='')
+            if self.shape == 'square':
+                self.drawings[self.index] = self.create_square_centered_and_rotated(
+                    self.path[self.index],
+                    self.line_width,
+                    random.randint(0,360),
+                    fill=self.color,
+                    outline=''
+                )
+            elif self.shape == 'circle':
+                self.drawings[self.index] = self.create_circle_centered(
+                    self.path[self.index],
+                    self.line_width,
+                    fill=self.color,
+                    outline=''
+                )
 
 
 
@@ -188,7 +203,7 @@ class PathDrawing(tk.Tk):
         else:
             self.index = 0
             self.lap = 0
-            self.set_random_path()
+            self.set_random_variables()
             self.stream.start_stream()
             self.after(DRAWING_STEP_DELAY, self.draw_on_path)
 
