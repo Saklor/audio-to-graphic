@@ -10,8 +10,15 @@ from math import ceil, sin, cos
 
 from audio_transformation import apply_fft
 
-p = pyaudio.PyAudio()
+# MODIFICAR ACA SI EL VOLUMEN ESTA BAJO O LOS COLORES APAGADOS
 
+# Este valor indica cual es la sensibilidad del volumen del microfono.
+# Si se quiere que las formas sean mas grandes, aumentar este valor (probar con 4 o 6)
+MAX_MIC_READING_MODIFIER = 2
+
+# Este valor indica cual es la sensibilidad de las frecuencias
+# Si se quiere que las formas tengan colores mas claros aumentar este valor (probar con 6 u 8)
+MAX_FFT_READING_MODIFIER = 4
 
 
 CHUNK = 1024
@@ -27,8 +34,10 @@ DELETE_SPACING = 50
 DRAWING_STEP_DELAY = 10
 STATIC_DRAWING_TIME = 5000
 
-MAX_MIC_READING = 32768/2
-MAX_FFT_READING = 8388352/4
+p = pyaudio.PyAudio()
+
+MAX_FFT_READING = 8388352/MAX_FFT_READING_MODIFIER
+MAX_MIC_READING = 32768/MAX_MIC_READING_MODIFIER
 FFT_BIN_FREQ_RANGE = int(RATE/ceil(CHUNK/2)) #Freq range of each bin
 
 
